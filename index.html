@@ -1,0 +1,107 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export interface Student {
+  id: string;
+  name: string;
+  birthDate: string;
+  parentName: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  address: string;
+  modality: 'Individual' | 'Dupla' | 'Pequeno Grupo';
+  frequency: number; // Aulas por semana
+  monthlyFee: number;
+  enrollmentDate: string;
+  observations: string;
+  status: 'Ativo' | 'Pausado' | 'Encerrado';
+  familyPin?: string; // Pin de acesso de 4 dígitos para Área da Família
+}
+
+export interface ClassSession {
+  id: string;
+  studentId: string;
+  studentName?: string; // Cache para facilitar exibição
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  theme: string;
+  vocabulary: string;
+  notes: string; // Observações pedagógicas
+  status: 'Agendada' | 'Concluída' | 'Cancelada' | 'Reposição';
+  participation: 'Excelente' | 'Boa' | 'Em desenvolvimento';
+  professor: string;
+  feedbackSent?: boolean; // Feedback enviado para os pais?
+}
+
+export interface MonthlyPayment {
+  id: string;
+  studentId: string;
+  studentName: string;
+  dueDate: string; // YYYY-MM-DD
+  amount: number;
+  status: 'Pago' | 'Pendente' | 'Atrasado';
+  paymentDate?: string;
+  invoiceUrl?: string; // Link de cobrança / Boleto
+}
+
+export interface FinancialRecord {
+  id: string;
+  type: 'Receita' | 'Despesa';
+  category: 'Mensalidade' | 'Aula Experimental' | 'Combustível' | 'Materiais' | 'Impressões' | 'Outros';
+  amount: number;
+  date: string; // YYYY-MM-DD
+  description: string;
+  studentId?: string; // Se relacionado a aluno
+}
+
+export interface StudentContract {
+  id: string;
+  studentId: string;
+  status: 'Pendente Assinatura' | 'Assinado';
+  fileName: string;
+  fileSize: string;
+  uploadedAt: string;
+  contentUrl?: string; // base64 simulado para visualização/download
+  signedAt?: string;
+  parentIp?: string;
+}
+
+export interface CRMLead {
+  id: string;
+  parentName: string;
+  phone: string;
+  whatsapp: string;
+  childName?: string;
+  childAge: string;
+  status: 'Novo contato' | 'Aula experimental agendada' | 'Proposta enviada' | 'Em negociação' | 'Matriculado' | 'Não convertido';
+  notes: string;
+  history: {
+    date: string;
+    note: string;
+  }[];
+  createdAt: string;
+}
+
+export interface LessonPlan {
+  id: string;
+  theme: string;
+  objective: string;
+  vocabulary: string;
+  song: string;
+  story: string;
+  activity: string;
+  materialsNeeded: string;
+  isTemplate?: boolean;
+}
+
+export interface FamilyAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  author: string;
+  recipientStudentId?: string; // Opcional (se for específico ou para todos)
+}

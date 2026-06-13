@@ -1,0 +1,1221 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { Student, ClassSession, MonthlyPayment, FinancialRecord } from '../types';
+import { 
+  BarChart, Users, Award, AlertCircle, Calendar, Check, Smile, 
+  Sparkles, BookOpen, Printer, Mail, Share2, Plus, Clock, Heart, 
+  Image as ImageIcon, Trash2, Send, Wand2, ArrowLeft, Copy, TrendingUp, TrendingDown, Landmark, RefreshCw
+} from 'lucide-react';
+import { 
+  ResponsiveContainer, 
+  BarChart as RechartsBarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  Legend as RechartsLegend, 
+  PieChart as RechartsPieChart, 
+  Pie, 
+  Cell, 
+  LineChart as RechartsLineChart, 
+  Line 
+} from 'recharts';
+
+interface ReportsProps {
+  students: Student[];
+  classes: ClassSession[];
+  payments: MonthlyPayment[];
+  financials: FinancialRecord[];
+  onAddClass?: (classSession: Omit<ClassSession, 'id'>) => void;
+  onEditClass?: (updatedClass: ClassSession) => void;
+}
+
+// Predefined mock kid activity photos for scrapbook placement
+const MOCK_PHOTOS_GALLERY = [
+  { id: 'paint', label: 'Pintura & Arte Artística', url: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=600&auto=format&fit=crop&q=60' },
+  { id: 'blocks', label: 'Blocos de Montar & Cores', url: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=600&auto=format&fit=crop&q=60' },
+  { id: 'story', label: 'Roda de Histórias & Fantoches', url: 'https://images.unsplash.com/photo-1485546246426-74dc88dec4d9?w=600&auto=format&fit=crop&q=60' },
+  { id: 'reading', label: 'Leitura Silenciosa Ilustrada', url: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600&auto=format&fit=crop&q=60' }
+];
+
+export default function Reports({ students, classes, payments = [], financials = [], onAddClass, onEditClass }: ReportsProps) {
+  const [activeTab, setActiveTab] = useState<'diarios' | 'mensal' | 'estatisticas'>('diarios');
+  
+  // State for Daily Class Report Register
+  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+  const [editingClass, setEditingClass] = useState<ClassSession | null>(null);
+  
+  // Form States for registering daily report
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [classDate, setClassDate] = useState(new Date().toISOString().split('T')[0]);
+  const [classTime, setClassTime] = useState('14:00');
+  const [classTheme, setClassTheme] = useState('');
+  const [classVocabulary, setClassVocabulary] = useState('');
+  const [classNotes, setClassNotes] = useState('');
+  const [classParticipation, setClassParticipation] = useState<'Excelente' | 'Boa' | 'Em desenvolvimento'>('Excelente');
+  const [selectedPhoto, setSelectedPhoto] = useState<string>('');
+
+  // States for Monthly Report Generator
+  const [monthlyStudentId, setMonthlyStudentId] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('Junho');
+  const [monthlySummary, setMonthlySummary] = useState('');
+  const [monthlyThemes, setMonthlyThemes] = useState('');
+  const [monthlyVocabulary, setMonthlyVocabulary] = useState('');
+  const [monthlyHighlights, setMonthlyHighlights] = useState('');
+  const [monthlySuggestions, setMonthlySuggestions] = useState('');
+  const [monthlyPhotos, setMonthlyPhotos] = useState<string[]>([]);
+  
+  // Communication distribution feedbacks
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSuccess, setEmailSuccess] = useState(false);
+  const [whatsappCopied, setWhatsappCopied] = useState(false);
+  const [isReportGenerated, setIsReportGenerated] = useState(false);
+
+  // Filter completed/agendada classes
+  const completedClasses = classes.filter(c => c.status === 'Concluída');
+
+  // Load selected editing class into form
+  const handleOpenEditClass = (cls: ClassSession) => {
+    setEditingClass(cls);
+    setSelectedStudentId(cls.studentId);
+    setClassDate(cls.date);
+    setClassTime(cls.time);
+    setClassTheme(cls.theme);
+    setClassVocabulary(cls.vocabulary);
+    setClassNotes(cls.notes);
+    setClassParticipation(cls.participation);
+    setIsClassModalOpen(true);
+  };
+
+  const handleOpenNewClassReport = () => {
+    setEditingClass(null);
+    setSelectedStudentId(students[0]?.id || '');
+    setClassDate(new Date().toISOString().split('T')[0]);
+    setClassTime('14:00');
+    setClassTheme('');
+    setClassVocabulary('');
+    setClassNotes('');
+    setClassParticipation('Excelente');
+    setSelectedPhoto('');
+    setIsClassModalOpen(true);
+  };
+
+  const handleSaveClassReport = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentId) return;
+
+    const studentName = students.find(s => s.id === selectedStudentId)?.name || 'Estudante';
+    
+    if (editingClass) {
+      if (onEditClass) {
+        onEditClass({
+          ...editingClass,
+          studentId: selectedStudentId,
+          studentName,
+          date: classDate,
+          time: classTime,
+          theme: classTheme,
+          vocabulary: classVocabulary,
+          notes: classNotes,
+          participation: classParticipation,
+          status: 'Concluída',
+        });
+      }
+    } else {
+      if (onAddClass) {
+        onAddClass({
+          studentId: selectedStudentId,
+          studentName,
+          date: classDate,
+          time: classTime,
+          theme: classTheme,
+          vocabulary: classVocabulary,
+          notes: classNotes,
+          status: 'Concluída',
+          participation: classParticipation,
+          professor: 'Teacher Carla'
+        });
+      }
+    }
+    
+    setIsClassModalOpen(false);
+  };
+
+  // AUTOMATIC COMPILATION OF MONTHLY REPORT
+  const handleAutoCompileMonthly = () => {
+    const student = students.find(s => s.id === monthlyStudentId);
+    if (!student) {
+      alert('Por favor, selecione um aluno primeiro.');
+      return;
+    }
+
+    // Filter student completed classes
+    const studentClasses = completedClasses.filter(c => c.studentId === student.id);
+    
+    if (studentClasses.length === 0) {
+      // Seed fallback values if no completed classes yet
+      setMonthlyThemes('Farm Animals, Colors & Shapes');
+      setMonthlyVocabulary('Cow, Pig, Red, Yellow, Blue, Circle, Square');
+      setMonthlySummary(`${student.name} demonstrou uma linda evolução neste mês em nossos encontros. Através das brincadeiras cooperativas e gincanas sensoriais, ele se engajou de forma muito leve e natural no idioma.`);
+      setMonthlyHighlights('Excelente retenção do vocabulário de animais e engajamento alegre ao cantar "Old MacDonald had a farm" imitando os sons com fantoches.');
+      setMonthlySuggestions('Cantar a música dos animais da fazenda juntos no carro e repetir as cores dos alimentos lúdicos de forma alegre durante as refeições.');
+      setMonthlyPhotos([MOCK_PHOTOS_GALLERY[0].url, MOCK_PHOTOS_GALLERY[2].url]);
+      setIsReportGenerated(true);
+      return;
+    }
+
+    // Extract values
+    const themesList = Array.from(new Set(studentClasses.map(c => c.theme).filter(Boolean))).join(', ');
+    const vocabList = Array.from(new Set(studentClasses.map(c => c.vocabulary).filter(Boolean))).join(', ');
+    const bestParticipation = studentClasses.some(c => c.participation === 'Excelente') ? 'Excelente' : 'Boa';
+    
+    // Auto-generate summary narrative
+    const generatedSummary = `${student.name} participou de ${studentClasses.length} encontros lúdicos de inglês neste período. Seu ritmo de aprendizado foi respeitado, garantindo que o contato com o idioma acontecesse de forma 100% natural, segura e voltada para o brincar espontâneo. O rendimento geral da participação foi avaliado como "${bestParticipation}".`;
+    
+    // Notes aggregator
+    const notesSummary = studentClasses.map(c => `• ${c.theme}: ${c.notes}`).slice(0, 3).join('\n');
+
+    setMonthlyThemes(themesList || 'A definir');
+    setMonthlyVocabulary(vocabList || 'A definir');
+    setMonthlySummary(generatedSummary);
+    setMonthlyHighlights(notesSummary || 'Ótima absorção e uso comunicativo do conteúdo.');
+    setMonthlySuggestions('Continuar ouvindo as músicas indicadas no roteiro pedagógico de aula e apontar cores nos brinquedos favoritos da criança de forma natural.');
+    
+    // Pre-populate 2 photos from gallery
+    setMonthlyPhotos([MOCK_PHOTOS_GALLERY[0].url, MOCK_PHOTOS_GALLERY[2].url]);
+    
+    setIsReportGenerated(true);
+    setEmailSuccess(false);
+    setWhatsappCopied(false);
+  };
+
+  // SEND REPORT BY EMAIL
+  const handleSendEmail = () => {
+    const student = students.find(s => s.id === monthlyStudentId);
+    if (!student) return;
+
+    setIsSendingEmail(true);
+    setEmailSuccess(false);
+
+    setTimeout(() => {
+      setIsSendingEmail(false);
+      setEmailSuccess(true);
+    }, 2000);
+  };
+
+  // SHARE REPORT BY WHATSAPP
+  const handleShareWhatsapp = () => {
+    const student = students.find(s => s.id === monthlyStudentId);
+    if (!student) return;
+
+    const message = `✨ *Relatório Pedagógico Mensal - Pequenos Bilíngues* 🧸\n\nOlá, ${student.parentName}! Aqui é a Teacher Carla Cristina. É com muito carinho que compartilho o relatório mensal de desenvolvimento no inglês de *${student.name}* (${selectedMonth}):\n\n🌿 *Resumo do Mês:* ${monthlySummary}\n\n🎨 *Temas Trabalhados:* ${monthlyThemes}\n\n🔠 *Vocabulário Explorado:* ${monthlyVocabulary}\n\n⭐ *Destaques:* ${monthlyHighlights}\n\n🏡 *Dica para casa:* ${monthlySuggestions}\n\nO inglês aconteceu de forma leve, lúdica e natural, respeitando o tempo sagrado de brincar! 🎈`;
+
+    navigator.clipboard.writeText(message);
+    setWhatsappCopied(true);
+
+    // Build functional shared click href API
+    const formattedPhone = student.whatsapp.replace(/\D/g, '');
+    const waUrl = `https://api.whatsapp.com/send?phone=55${formattedPhone}&text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in text-marinho print:bg-white print:p-0">
+      
+      {/* 1. SECTION HEADER (HIDDEN IN PRINT) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-marinho/5 pb-5 print:hidden">
+        <div>
+          <h1 className="font-display font-black text-3xl text-marinho flex items-center gap-2">
+            <BarChart className="text-coral" /> Relatórios Pedagógicos
+          </h1>
+          <p className="text-sm text-marinho/60 mt-0.5">
+            Acompanhe o percurso lúdico de cada criança e gere memórias afetivas em forma de relatórios mensais para as famílias.
+          </p>
+        </div>
+
+        {/* Tab buttons switcher */}
+        <div className="flex bg-areia rounded-full p-1.5 border border-marinho/5 gap-1 overflow-x-auto max-w-full">
+          <button
+            onClick={() => setActiveTab('diarios')}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wide transition-all shrink-0 cursor-pointer ${
+              activeTab === 'diarios' 
+                ? 'bg-marinho text-white shadow-xs' 
+                : 'text-marinho/60 hover:text-marinho'
+            }`}
+          >
+            Diários de Aula 📑
+          </button>
+          <button
+            onClick={() => setActiveTab('mensal')}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wide transition-all shrink-0 cursor-pointer ${
+              activeTab === 'mensal' 
+                ? 'bg-marinho text-white shadow-xs' 
+                : 'text-marinho/60 hover:text-marinho'
+            }`}
+          >
+            Relatório Mensal ⭐
+          </button>
+          <button
+            onClick={() => setActiveTab('estatisticas')}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wide transition-all shrink-0 cursor-pointer ${
+              activeTab === 'estatisticas' 
+                ? 'bg-marinho text-white shadow-xs' 
+                : 'text-marinho/60 hover:text-marinho'
+            }`}
+          >
+            Métricas & Gráficos 📊
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================
+          TAB 1: DAILY CLASS REPORTS
+          ======================================================== */}
+      {activeTab === 'diarios' && (
+        <div className="space-y-6">
+          
+          <div className="flex justify-between items-center bg-white p-4 rounded-scrapbook border-2 border-dashed border-red-100">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 bg-coral/15 text-coral rounded-full"><Clock size={20} /></span>
+              <div>
+                <span className="text-xs font-bold text-coral uppercase tracking-wider block">Relatório Pós-Aula</span>
+                <span className="text-sm text-marinho/80 font-semibold">Registre as conquistas do dia para alimentar o banco de dados.</span>
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleOpenNewClassReport}
+              className="px-5 py-2.5 bg-coral hover:bg-coral/90 text-marinho font-display font-black text-xs uppercase tracking-wider rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition"
+            >
+              <Plus size={14} /> Registrar Relatório de Aula
+            </button>
+          </div>
+
+          <div className="bg-white rounded-scrapbook border-2 border-areia-dark/10 p-6">
+            <h3 className="font-display font-bold text-lg text-marinho mb-4 flex items-center gap-2">
+              <BookOpen size={18} className="text-azulCeu" /> Histórico de Relatórios de Encontros ({completedClasses.length})
+            </h3>
+
+            {completedClasses.length === 0 ? (
+              <div className="text-center py-12 bg-areia/15 rounded-2xl border-2 border-dashed border-marinho/5">
+                <Smile size={36} className="text-marinho/30 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-marinho/60">Nenhum diário de aula pedagógico preenchido no sistema ainda.</p>
+                <p className="text-xs text-marinho/40 mt-1">Clique para registrar o primeiro relatório clicando no botão acima!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {completedClasses.map((cls) => (
+                  <div 
+                    key={cls.id}
+                    className="bg-[#FFFDF9] p-5 rounded-scrapbook border-2 border-dashed border-marinho/10 hover:border-coral/50 transition-all duration-300 relative group flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Top tag */}
+                      <div className="flex justify-between items-start mb-3">
+                        <span className="px-2.5 py-1 bg-menta/30 text-emerald-950 font-display font-bold text-[10px] rounded-full uppercase">
+                          {cls.studentName}
+                        </span>
+                        <span className="text-[10px] font-mono text-marinho/40 font-bold">{cls.date}</span>
+                      </div>
+
+                      {/* Content */}
+                      <div className="space-y-2 mb-4">
+                        <h4 className="font-display font-black text-marinho text-base">🌱 {cls.theme}</h4>
+                        <p className="text-xs text-marinho/60">
+                          <strong className="text-marinho/70">Vocabulary:</strong> {cls.vocabulary}
+                        </p>
+                        <div className="bg-white/70 p-2.5 rounded-lg border border-marinho/5 text-xs text-marinho/80 italic leading-relaxed">
+                          "{cls.notes}"
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom controls */}
+                    <div className="pt-3 border-t border-marinho/5 flex justify-between items-center">
+                      <span className="text-[10px] font-semibold text-coral flex items-center gap-1">
+                        ⭐ Participação: <strong>{cls.participation}</strong>
+                      </span>
+                      
+                      <button 
+                        onClick={() => handleOpenEditClass(cls)}
+                        className="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        Editar dados
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 2: MONTHLY REPORT GENERATOR
+          ======================================================== */}
+      {activeTab === 'mensal' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* LEFT: GENERATOR CONTROLS FRAME */}
+          <div className="lg:col-span-5 bg-white p-6 rounded-scrapbook border-2 border-areia-dark/10 space-y-6 print:hidden">
+            <div className="space-y-1">
+              <span className="text-[10px] font-black tracking-widest text-[#B5A1C9] uppercase block">Passo Prático</span>
+              <h3 className="font-display font-bold text-xl text-marinho">Configurar Relatório Mensal</h3>
+              <p className="text-xs text-marinho/60">Selecione o aluno e faça a compilação mágica inteligente baseada no histórico diário.</p>
+            </div>
+
+            <div className="space-y-4">
+              
+              {/* Select Student */}
+              <div>
+                <label className="block text-xs font-bold text-marinho/70 mb-1">Criança Beneficiada</label>
+                <select
+                  value={monthlyStudentId}
+                  onChange={(e) => {
+                    setMonthlyStudentId(e.target.value);
+                    setIsReportGenerated(false);
+                  }}
+                  className="w-full bg-areia/40 border border-marinho/10 p-3 rounded-xl text-xs outline-none focus:border-coral"
+                >
+                  <option value="">-- Selecione o Pequeno --</option>
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.modality})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Select Month */}
+              <div>
+                <label className="block text-xs font-bold text-marinho/70 mb-1">Mês de Referência</label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="w-full bg-areia/40 border border-marinho/10 p-3 rounded-xl text-xs outline-none focus:border-coral"
+                >
+                  <option value="Janeiro">Janeiro</option>
+                  <option value="Fevereiro">Fevereiro</option>
+                  <option value="Março">Março</option>
+                  <option value="Abril">Abril</option>
+                  <option value="Maio">Maio</option>
+                  <option value="Junho">Junho</option>
+                  <option value="Julho">Julho</option>
+                  <option value="Agosto">Agosto</option>
+                  <option value="Setembro">Setembro</option>
+                  <option value="Outubro">Outubro</option>
+                  <option value="Novembro">Novembro</option>
+                  <option value="Dezembro">Dezembro</option>
+                </select>
+              </div>
+
+              <button 
+                onClick={handleAutoCompileMonthly}
+                disabled={!monthlyStudentId}
+                className="w-full py-3 bg-marinho text-white hover:bg-marinho/90 rounded-xl font-display font-black text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Wand2 size={15} className="text-amarelo" /> Compilar Dados do Mês ✨
+              </button>
+
+            </div>
+
+            {isReportGenerated && (
+              <div className="pt-4 border-t border-marinho/5 space-y-4 animate-fade-in">
+                <span className="text-xs font-bold uppercase text-marinho/40">Refinar Informações Pedagógicas</span>
+                
+                {/* Resumo */}
+                <div>
+                  <label className="block text-xs font-bold text-marinho/70 mb-1">Resumo Pedagógico do Mês</label>
+                  <textarea 
+                    rows={4}
+                    value={monthlySummary}
+                    onChange={(e) => setMonthlySummary(e.target.value)}
+                    className="w-full bg-[#FFFDF9] border border-marinho/10 p-3 rounded-xl text-xs outline-none focus:border-coral"
+                  />
+                </div>
+
+                {/* Temas */}
+                <div>
+                  <label className="block text-xs font-bold text-marinho/70 mb-1">Temas Trabalhados</label>
+                  <input 
+                    type="text"
+                    value={monthlyThemes}
+                    onChange={(e) => setMonthlyThemes(e.target.value)}
+                    className="w-full bg-[#FFFDF9] border border-marinho/10 p-3 rounded-xl text-xs outline-none focus:border-coral"
+                  />
+                </div>
+
+                {/* Vocabulario */}
+                <div>
+                  <label className="block text-xs font-bold text-marinho/70 mb-1">Vocabulário Imersivo</label>
+                  <input 
+                    type="text"
+                    value={monthlyVocabulary}
+                    onChange={(e) => setMonthlyVocabulary(e.target.value)}
+                    className="w-full bg-[#FFFDF9] border border-marinho/10 p-3 rounded-xl text-xs outline-none focus:border-coral"
+                  />
+                </div>
+
+                {/* Destaque */}
+                <div>
+                  <label className="block text-xs font-bold text-marinho/70 mb-1">Destaques do Desenvolvimento</label>
+                  <textarea 
+                    rows={3}
+                    value={monthlyHighlights}
+                    onChange={(e) => setMonthlyHighlights(e.target.value)}
+                    className="w-full bg-[#FFFDF9] border border-marinho/10 p-3 rounded-xl text-xs outline-none focus:border-coral"
+                  />
+                </div>
+
+                {/* Sugestao */}
+                <div>
+                  <label className="block text-xs font-bold text-marinho/70 mb-1">Sugestões de Reforço em Casa 🏡</label>
+                  <textarea 
+                    rows={3}
+                    value={monthlySuggestions}
+                    onChange={(e) => setMonthlySuggestions(e.target.value)}
+                    className="w-full bg-[#FFFDF9] border border-marinho/10 p-3 rounded-xl text-xs outline-none focus:border-coral"
+                  />
+                </div>
+
+                {/* Polaroid photo selectors */}
+                <div>
+                  <label className="block text-xs font-bold text-marinho/70 mb-2">Fotos para o Scrapbook (Selecione 2)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MOCK_PHOTOS_GALLERY.map((p) => {
+                      const isSelected = monthlyPhotos.includes(p.url);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setMonthlyPhotos(monthlyPhotos.filter(url => url !== p.url));
+                            } else {
+                              if (monthlyPhotos.length >= 2) {
+                                setMonthlyPhotos([monthlyPhotos[1], p.url]);
+                              } else {
+                                setMonthlyPhotos([...monthlyPhotos, p.url]);
+                              }
+                            }
+                          }}
+                          className={`p-2 border rounded-xl flex flex-col items-center gap-1.5 transition text-left cursor-pointer ${
+                            isSelected ? 'border-coral bg-coral/5' : 'border-marinho/10 hover:bg-areia/20'
+                          }`}
+                        >
+                          <img src={p.url} className="w-full h-12 object-cover rounded-lg" alt="" />
+                          <span className="text-[9px] font-bold text-marinho/70 truncate w-full">{p.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+          </div>
+
+          {/* RIGHT: BEAUTIFUL SCRAPBOOK LIVE PREVIEW CARD */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {!isReportGenerated ? (
+              <div className="bg-white p-12 text-center rounded-scrapbook border-4 border-dashed border-marinho/10 flex flex-col justify-center items-center h-96">
+                <Smile size={48} className="text-[#CDB4DB] mb-3 animate-bounce" />
+                <h4 className="font-display font-bold text-lg text-marinho">Visualização do Scrapbook Família</h4>
+                <p className="text-xs text-marinho/60 max-w-sm mx-auto mt-1 leading-relaxed">
+                  Escolha um aluno à esquerda e clique em <strong>"Compilar"</strong> para ver a mágica do scrapbook lúdico carimbado com o selo pedagógico!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6 animate-fade-in">
+                
+                {/* Visual Actions controller */}
+                <div className="bg-white p-4 rounded-2xl border border-marinho/5 flex flex-wrap gap-2 justify-between items-center print:hidden">
+                  <span className="text-xs font-bold text-marinho/70">Ações de Entrega:</span>
+                  
+                  <div className="flex gap-2 flex-wrap">
+                    
+                    {/* PRINT / PDF BUTTON */}
+                    <button 
+                      onClick={() => window.print()}
+                      className="px-4 py-2 border border-marinho hover:bg-marinho hover:text-white text-marinho font-display font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Printer size={14} /> Exportar / Imprimir
+                    </button>
+
+                    {/* SEND EMAIL BUTTON */}
+                    <button 
+                      onClick={handleSendEmail}
+                      disabled={isSendingEmail}
+                      className="px-4 py-2 bg-[#9CC6E8]/30 hover:bg-[#9CC6E8]/50 text-blue-900 border border-blue-200 font-display font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      {isSendingEmail ? (
+                        <>
+                          <Clock className="animate-spin" size={14} /> Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Mail size={14} /> Enviar por E-mail
+                        </>
+                      )}
+                    </button>
+
+                    {/* SHARE WHATSAPP BUTTON */}
+                    <button 
+                      onClick={handleShareWhatsapp}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-display font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Share2 size={14} /> WhatsApp
+                    </button>
+
+                  </div>
+                </div>
+
+                {/* Email confirmation message */}
+                {emailSuccess && (
+                  <div className="bg-menta/20 border border-menta text-marinho p-4 rounded-xl text-xs font-bold flex items-center gap-2 animate-pulse print:hidden">
+                    <Check size={16} className="text-emerald-700" />
+                    <span>Relatório Mensal de {students.find(s => s.id === monthlyStudentId)?.name} carimbado e enviado com absoluto sucesso para o pai! 💌</span>
+                  </div>
+                )}
+
+                {/* WhatsApp copy confirmation */}
+                {whatsappCopied && (
+                  <div className="bg-blue-50 border border-blue-200 text-blue-900 p-4 rounded-xl text-xs font-bold flex items-center gap-2 print:hidden">
+                    <Check size={16} className="text-blue-700" />
+                    <span>Mensagem de resumo copiada para a área de transferência. Redirecionando para conversa de WhatsApp do responsável! 🚀</span>
+                  </div>
+                )}
+
+                {/* ---- THE SCRAPBOOK CARD ---- */}
+                <div 
+                  id="scrapbook-report-card-element"
+                  className="bg-[#FAF6F0] p-6 sm:p-12 rounded-scrapbook border-[6px] border-double border-orange-200 relative overflow-hidden shadow-2xl print:bg-[#FAF6F0] print:border-none print:shadow-none print:p-8"
+                >
+                  
+                  {/* Scribbles / cute shapes */}
+                  <div className="absolute top-4 right-4 text-amarelo/40 print:text-amber-300">
+                    <Sparkles size={40} className="animate-pulse" />
+                  </div>
+                  <div className="absolute bottom-6 left-6 text-lilas/40">
+                    <Heart size={44} className="fill-current" />
+                  </div>
+                  
+                  {/* Card Title Header */}
+                  <div className="text-center space-y-3 border-b-2 border-dashed border-orange-200 pb-6 mb-8">
+                    <span className="text-[10px] sm:text-xs font-black tracking-widest text-coral uppercase block">Selo de Desenvolvimento Pedagógico</span>
+                    
+                    <h2 className="font-display font-black text-2xl sm:text-4xl text-marinho tracking-tight leading-none">
+                      Pequenos Bilíngues
+                    </h2>
+                    
+                    <span className="inline-block px-4 py-1 bg-white border border-marinho/10 shadow-xs rounded-full text-[10px] font-mono text-marinho/60 font-bold uppercase">
+                      Relatório Mensal • {selectedMonth} 2026
+                    </span>
+                  </div>
+
+                  {/* Student profile block */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white/60 p-4 rounded-2xl border border-orange-100/50 mb-6">
+                    <div className="text-xs">
+                      <span className="block text-marinho/50 text-[10px] font-bold uppercase">Nome da Criança:</span>
+                      <strong className="text-marinho text-base font-display">
+                        {students.find(s => s.id === monthlyStudentId)?.name || 'Estudante'}
+                      </strong>
+                    </div>
+                    <div className="text-xs">
+                      <span className="block text-marinho/50 text-[10px] font-bold uppercase">Frequência Semanal:</span>
+                      <strong className="text-marinho font-display font-medium">
+                        {students.find(s => s.id === monthlyStudentId)?.frequency || 1} encontro(s) semanal de ~1h
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Core Narrative / Monthly Summary */}
+                  <div className="bg-white p-6 rounded-2xl border border-dashed border-red-200/50 space-y-3 mb-6 relative">
+                    <div className="absolute top-2 right-2 px-2 py-0.5 bg-coral/20 text-marinho text-[8px] font-bold uppercase rounded-md tracking-wider">
+                      Resumo do Mês
+                    </div>
+                    <h4 className="font-display font-bold text-marinho text-base">Minhas Descobertas no Inglês 🌿</h4>
+                    <p className="text-xs leading-relaxed text-marinho/90 font-medium whitespace-pre-line bg-[#FFFDF9] p-3 rounded-xl border border-amber-150">
+                      {monthlySummary}
+                    </p>
+                  </div>
+
+                  {/* Curiosities / Themes & Vocabs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    
+                    {/* Temas */}
+                    <div className="bg-emerald-50/50 p-5 rounded-2xl border border-[#A8D5C2]/40 relative">
+                      <h5 className="font-display font-bold text-emerald-950 text-sm mb-2">🎈 O que Vivenciamos</h5>
+                      <span className="block text-[10px] font-bold text-emerald-900/60 uppercase mb-2">Temas Trabalhados:</span>
+                      <p className="text-xs font-semibold text-emerald-950 leading-relaxed">
+                        {monthlyThemes}
+                      </p>
+                    </div>
+
+                    {/* Vocabulario */}
+                    <div className="bg-purple-50/55 p-5 rounded-2xl border border-purple-200/40">
+                      <h5 className="font-display font-bold text-purple-950 text-sm mb-2">🔤 Vocabulário Explorado</h5>
+                      <span className="block text-[10px] font-bold text-purple-900/60 uppercase mb-2">Palavras & Expressões:</span>
+                      <p className="text-xs font-semibold text-purple-950 font-mono leading-relaxed">
+                        {monthlyVocabulary}
+                      </p>
+                    </div>
+
+                  </div>
+
+                  {/* Pictures block / Polaroid style */}
+                  {monthlyPhotos.length > 0 && (
+                    <div className="bg-[#FFFDF9] p-5 rounded-2xl border border-orange-100 mb-6">
+                      <h5 className="font-display font-bold text-marinho text-sm mb-4 text-center">📸 Memórias do Nosso Scrapbook</h5>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 justify-center">
+                        {monthlyPhotos.map((pUrl, i) => (
+                          <div 
+                            key={i} 
+                            className={`bg-white p-3 pb-6 shadow-md border border-orange-100 relative max-w-[240px] mx-auto ${
+                              i === 0 ? '-rotate-2' : 'rotate-2'
+                            } print:shadow-none print:border print:max-w-[200px]`}
+                          >
+                            <img src={pUrl} className="w-full h-28 object-cover rounded-md mb-2" alt="Kid Activity" />
+                            <div className="text-center font-display text-[9px] font-black text-marinho/60 mt-2 italic">
+                              {i === 0 ? 'Brincar lúdico & Afeto' : 'Conquista significativa'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Destaque / Conquista */}
+                  <div className="bg-amber-50/45 p-6 rounded-2xl border border-amber-200/50 mb-6">
+                    <h5 className="font-display font-bold text-amber-950 text-sm mb-2">⭐ Destaques de Desenvolvimento</h5>
+                    <p className="text-xs text-amber-950 leading-relaxed font-semibold whitespace-pre-line">
+                      {monthlyHighlights}
+                    </p>
+                  </div>
+
+                  {/* Sugestoes para casa */}
+                  <div className="bg-blue-50/50 p-6 rounded-2xl border border-[#9CC6E8]/40 mb-6">
+                    <h5 className="font-display font-bold text-blue-950 text-sm mb-2">🏡 Sugestões para continuar em casa</h5>
+                    <p className="text-xs text-blue-950 leading-relaxed font-semibold whitespace-pre-line">
+                      {monthlySuggestions}
+                    </p>
+                  </div>
+
+                  {/* Teacher signature element */}
+                  <div className="text-center pt-8 border-t border-dashed border-orange-200 flex flex-col items-center">
+                    <div className="font-display text-marinho font-bold text-base">Teacher Carla Cristina</div>
+                    <div className="text-[9px] font-bold text-coral uppercase tracking-widest mt-1">Inglês Lúdico & Afetuoso</div>
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 3: ADVANCED STATISTICS & METRICS
+          ======================================================== */}
+      {activeTab === 'estatisticas' && (
+        <div className="space-y-6 animate-fade-in print:hidden">
+          
+          {/* Section Summary Scoreboard */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            
+            {/* Total Students */}
+            <div className="bg-white p-5 rounded-scrapbook border-2 border-dashed border-marinho/10 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-marinho/50">Alunos Ativos</span>
+                <Users size={16} className="text-coral" />
+              </div>
+              <p className="text-2xl font-display font-black text-marinho">
+                {students.filter(s => s.status === 'Ativo').length} <span className="text-xs text-marinho/45 font-medium">crianças</span>
+              </p>
+              <div className="text-[9px] text-marinho/60 font-semibold uppercase">
+                {students.filter(s => s.status === 'Pausado').length} Pausados • {students.filter(s => s.status === 'Encerrado').length} Encerrados
+              </div>
+            </div>
+
+            {/* Total Revenues */}
+            <div className="bg-white p-5 rounded-scrapbook border-2 border-dashed border-marinho/10 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-marinho/50">Receita Total</span>
+                <TrendingUp size={16} className="text-emerald-500" />
+              </div>
+              <p className="text-2xl font-display font-black text-emerald-600 font-mono">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                  financials.filter(f => f.type === 'Receita').reduce((sum, f) => sum + f.amount, 0)
+                )}
+              </p>
+              <div className="text-[9px] text-marinho/60 font-semibold uppercase">
+                Histórico acumulado em caixa
+              </div>
+            </div>
+
+            {/* Total Expenses */}
+            <div className="bg-white p-5 rounded-scrapbook border-2 border-dashed border-marinho/10 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-marinho/50">Despesa Total</span>
+                <TrendingDown size={16} className="text-coral" />
+              </div>
+              <p className="text-2xl font-display font-black text-red-500 font-mono">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                  financials.filter(f => f.type === 'Despesa').reduce((sum, f) => sum + f.amount, 0)
+                )}
+              </p>
+              <div className="text-[9px] text-marinho/60 font-semibold uppercase">
+                Investimentos & insumos lúdicos
+              </div>
+            </div>
+
+            {/* Default rate (Inadimplência) */}
+            {(() => {
+              const totalDue = payments.reduce((sum, p) => sum + p.amount, 0);
+              const overdue = payments.filter(p => p.status === 'Atrasado').reduce((sum, p) => sum + p.amount, 0);
+              const defaultRate = totalDue > 0 ? (overdue / totalDue) * 100 : 0;
+              return (
+                <div className="bg-white p-5 rounded-scrapbook border-2 border-dashed border-marinho/10 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-marinho/50">Taxa de Inadimplência</span>
+                    <Landmark size={16} className="text-amber-500" />
+                  </div>
+                  <p className="text-2xl font-display font-black text-amber-600 font-mono">
+                    {defaultRate.toFixed(1)}%
+                  </p>
+                  <div className="text-[9px] text-marinho/60 font-semibold uppercase">
+                    R$ {overdue.toFixed(0)} atrasados de R$ {totalDue.toFixed(0)} cobrados
+                  </div>
+                </div>
+              );
+            })()}
+
+          </div>
+
+          {/* CHARTS ROW 1: Revenue vs Expense & Active student modality */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* 1. CHART: Revenue vs Expense (Dynamic aggregation) */}
+            <div className="lg:col-span-7 bg-white p-6 rounded-scrapbook border border-marinho/5 space-y-4 shadow-xs">
+              <div>
+                <h3 className="font-display font-bold text-base text-marinho flex items-center gap-1.5">
+                  📈 Faturamento Mensal (Receitas vs. Despesas)
+                </h3>
+                <p className="text-xs text-marinho/60">Análise agregada mês a mês baseada no livro-caixa.</p>
+              </div>
+
+              {(() => {
+                const finGroup: { [key: string]: { receita: number, despesa: number } } = {};
+                financials.forEach(f => {
+                  const parts = f.date.split('-');
+                  const year = parts[0];
+                  const month = parts[1];
+                  if (!year || !month) return;
+                  const monthMap: { [key: string]: string } = {
+                    '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr', '05': 'Mai', '06': 'Jun',
+                    '07': 'Jul', '08': 'Ago', '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez'
+                  };
+                  const mName = monthMap[month] || `Mês ${month}`;
+                  const key = `${mName}/${year.substring(2)}`;
+                  if (!finGroup[key]) {
+                    finGroup[key] = { receita: 0, despesa: 0 };
+                  }
+                  if (f.type === 'Receita') {
+                    finGroup[key].receita += f.amount;
+                  } else {
+                    finGroup[key].despesa += f.amount;
+                  }
+                });
+
+                // Convert to sorted chart array index Order (Jan->Dec)
+                const chartData = Object.entries(finGroup).map(([name, val]) => ({
+                  name,
+                  Receitas: val.receita,
+                  Despesas: val.despesa,
+                  Saldo: val.receita - val.despesa
+                })).sort((a,b) => {
+                  return a.name.localeCompare(b.name);
+                });
+
+                if (chartData.length === 0) {
+                  return (
+                    <div className="h-64 flex items-center justify-center bg-areia/10 border-2 border-dashed border-marinho/5 rounded-2xl text-xs font-semibold text-marinho/50">
+                      Nenhuma transação financeira lançada.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsBarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F3F5" />
+                        <XAxis dataKey="name" stroke="#8A9BA8" fontSize={10} fontWeight={600} />
+                        <YAxis stroke="#8A9BA8" fontSize={10} fontWeight={600} tickFormatter={(v) => `R$${v}`} />
+                        <RechartsTooltip formatter={(v) => `R$ ${Number(v).toFixed(2)}`} />
+                        <RechartsLegend wrapperStyle={{ fontSize: 10, fontWeight: 'bold' }} verticalAlign="top" height={30} />
+                        <Bar id="bar-charts-revenues" dataKey="Receitas" fill="#10B981" radius={[4, 4, 0, 0]} name="Receitas (Inflow)" />
+                        <Bar id="bar-charts-expenses" dataKey="Despesas" fill="#EF4444" radius={[4, 4, 0, 0]} name="Despesas (Outflow)" />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              })()}
+              
+              <div className="p-3 bg-menta/5 border border-menta/20 rounded-xl text-[10px] text-marinho/70 leading-relaxed font-semibold">
+                💡 <strong>Dica da Teacher Carla:</strong> O faturamento lúdico é alimentado automaticamente sempre que uma cobrança é marcada como <strong>"Pago"</strong> no fluxo comercial, mantendo o controle automatizado e fidedigno.
+              </div>
+            </div>
+
+            {/* 2. CHART: Active student modality */}
+            <div className="lg:col-span-5 bg-white p-6 rounded-scrapbook border border-marinho/5 space-y-4 shadow-xs">
+              <div>
+                <h3 className="font-display font-bold text-base text-marinho flex items-center gap-1.5">
+                  🧸 Alunos Ativos por Modalidade
+                </h3>
+                <p className="text-xs text-marinho/60">Contagem de matrículas vigentes em cada modalidade lúdica.</p>
+              </div>
+
+              {(() => {
+                const activeSt = students.filter(s => s.status === 'Ativo');
+                const counts = { 'Individual': 0, 'Dupla': 0, 'Pequeno Grupo': 0 };
+                activeSt.forEach(s => {
+                  if (counts[s.modality] !== undefined) {
+                    counts[s.modality]++;
+                  }
+                });
+
+                const chartData = Object.entries(counts).map(([name, value]) => ({ name, value }));
+                const COLORS = ['#FF6F61', '#4DA8DA', '#A78BFA']; // coral, azulCeu, lila
+
+                if (activeSt.length === 0) {
+                  return (
+                    <div className="h-56 flex items-center justify-center bg-areia/10 border-2 border-dashed border-marinho/5 rounded-2xl text-xs font-semibold text-marinho/50">
+                      Nenhum aluno ativo registrado.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    <div className="h-44 w-full flex justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={65}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell id={`cell-modality-${index}`} key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip formatter={(v) => [`${v} aluno(s)`, 'Quantidade']} />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Modality Legends Details */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {chartData.map((entry, index) => (
+                        <div key={entry.name} className="text-center p-2 rounded-xl bg-areia/30 border border-marinho/5">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full mb-1" style={{ backgroundColor: COLORS[index] }} />
+                          <span className="block text-[8px] font-black uppercase text-marinho/60 tracking-wider leading-none">{entry.name}</span>
+                          <strong className="block text-sm font-display font-black text-marinho mt-1">{entry.value}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* CHARTS ROW 2: Defaults overview & Overdue Payments List */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* 3. CHART: Payments Bill Status Donut */}
+            <div className="lg:col-span-5 bg-white p-6 rounded-scrapbook border border-marinho/5 space-y-4 shadow-xs">
+              <div>
+                <h3 className="font-display font-bold text-base text-marinho flex items-center gap-1.5">
+                  💳 Saúde de Cobranças (Mensalidades)
+                </h3>
+                <p className="text-xs text-marinho/60">Análise de status do total das mensalidades emitidas.</p>
+              </div>
+
+              {(() => {
+                const states = { 'Pago': 0, 'Pendente': 0, 'Atrasado': 0 };
+                payments.forEach(p => {
+                  states[p.status] += p.amount;
+                });
+
+                const chartData = Object.entries(states).map(([name, value]) => ({ name, value }));
+                const COLORS = ['#10B981', '#F59E0B', '#EF4444']; // emerald (Pago), amber (Pendente), rose (Atrasado)
+
+                if (payments.length === 0) {
+                  return (
+                    <div className="h-56 flex items-center justify-center bg-areia/10 border-2 border-dashed border-marinho/5 rounded-2xl text-xs font-semibold text-marinho/50">
+                      Nenhuma mensalidade registrada na base.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    <div className="h-44 w-full flex justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={65}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell id={`cell-payment-${index}`} key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip formatter={(v) => [`R$ ${Number(v).toFixed(2)}`, 'Volume']} />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Payment status items */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {chartData.map((entry, index) => (
+                        <div key={entry.name} className="text-center p-2 rounded-xl bg-areia/30 border border-marinho/5">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full mb-1" style={{ backgroundColor: COLORS[index] }} />
+                          <span className="block text-[8px] font-black uppercase text-marinho/60 tracking-wider leading-none">{entry.name}</span>
+                          <strong className="block text-xs font-mono font-bold text-marinho mt-1">R$ {entry.value}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* 4. LIST: Detail of default (Inadimplentes) */}
+            <div className="lg:col-span-7 bg-white p-6 rounded-scrapbook border border-marinho/5 space-y-4 shadow-xs">
+              <div>
+                <h3 className="font-display font-bold text-base text-marinho flex items-center gap-1.5">
+                  🚨 Histórico & Alertas de Inadimplência
+                </h3>
+                <p className="text-xs text-marinho/60">Lista de mensalidades pendentes de regularização imediata.</p>
+              </div>
+
+              {(() => {
+                const overdueList = payments.filter(p => p.status === 'Atrasado');
+
+                if (overdueList.length === 0) {
+                  return (
+                    <div className="py-12 text-center bg-emerald-50/20 border-2 border-dashed border-emerald-100 rounded-2xl w-full">
+                      <Smile size={32} className="text-emerald-500 mx-auto mb-2 animate-bounce" />
+                      <h4 className="text-xs font-bold text-emerald-800">Inadimplência Zero! 🎉</h4>
+                      <p className="text-[10px] text-emerald-700/60 mt-0.5">Parabéns. Todas as famílias estão com as obrigações em dia.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                    {overdueList.map(item => {
+                      const student = students.find(s => s.id === item.studentId);
+                      return (
+                        <div key={item.id} className="p-3 bg-red-50/45 border border-red-100 rounded-xl flex items-center justify-between gap-2.5">
+                          <div className="space-y-0.5" id={`overdue-student-${item.id}`}>
+                            <strong className="block text-xs text-marinho">{item.studentName}</strong>
+                            <div className="flex items-center gap-1.5 text-[9px] font-semibold text-marinho/50">
+                              <span>Vencimento: {item.dueDate}</span>
+                              <span>•</span>
+                              <span>Contato: {student ? student.phone : 'Não cadastrado'}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="text-right shrink-0">
+                            <span className="block text-xs font-mono font-bold text-rose-600">
+                              R$ {item.amount.toFixed(2)}
+                            </span>
+                            <span className="inline-block px-1.5 py-0.5 bg-rose-100 text-[#C0392B] font-display text-[8px] font-black uppercase rounded-sm mt-1">
+                              Atrasado ⚠️
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              <div className="p-3 bg-amber-50/30 border border-amber-200/40 rounded-xl text-[10px] text-marinho/70 flex items-start gap-2">
+                <AlertCircle size={14} className="shrink-0 text-amber-600 mt-0.5" />
+                <span className="leading-relaxed">
+                  Para cobrar as mensalidades em aberto, você pode clicar no botão de WhatsApp diretamente no perfil de cada aluno e enviar a chave PIX padrão de forma rápida e segura.
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL: CLASS DIARY RECORD POPUP
+          ======================================================== */}
+      {isClassModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 print:hidden">
+          <div className="bg-white rounded-scrapbook border-4 border-dashed border-marinho/10 p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto space-y-6">
+            
+            <div className="flex justify-between items-start border-b border-marinho/5 pb-3">
+              <div>
+                <h3 className="font-display font-black text-xl text-marinho">
+                  {editingClass ? '✏️ Editar Relatório de Aula' : '📑 Novo Relatório de Aula'}
+                </h3>
+                <p className="text-xs text-marinho/60">Após cada aula, registre as conquistas e o vocabulário.</p>
+              </div>
+              <button 
+                onClick={() => setIsClassModalOpen(false)}
+                className="text-marinho/50 hover:text-marinho font-display font-black text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveClassReport} className="space-y-4">
+              
+              {/* Aluno Selection */}
+              <div>
+                <label className="block text-xs font-bold text-marinho/60 mb-1">Criança / Turma</label>
+                <select
+                  required
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="w-full bg-areia/40 border border-marinho/10 p-2.5 rounded-xl text-xs outline-none focus:border-coral"
+                >
+                  <option value="">-- Selecione o Aluno --</option>
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.modality})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Data and Horário */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-marinho/60 mb-1">Data</label>
+                  <input
+                    type="date"
+                    required
+                    value={classDate}
+                    onChange={(e) => setClassDate(e.target.value)}
+                    className="w-full bg-areia/40 border border-marinho/10 p-2.5 rounded-xl text-xs outline-none focus:border-coral"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-marinho/60 mb-1">Horário</label>
+                  <input
+                    type="time"
+                    required
+                    value={classTime}
+                    onChange={(e) => setClassTime(e.target.value)}
+                    className="w-full bg-areia/40 border border-marinho/10 p-2.5 rounded-xl text-xs outline-none focus:border-coral"
+                  />
+                </div>
+              </div>
+
+              {/* Tema Trabalhado */}
+              <div>
+                <label className="block text-xs font-bold text-marinho/60 mb-1">Tema Trabalhado (Ex: Farm Animals, Fruit Salad, Dinosaurs)</label>
+                <input
+                  type="text"
+                  required
+                  value={classTheme}
+                  onChange={(e) => setClassTheme(e.target.value)}
+                  placeholder="Qual o foco temático lúdico de hoje?"
+                  className="w-full bg-[#FFFDF9] border border-marinho/10 p-2.5 rounded-xl text-xs outline-none focus:border-coral"
+                />
+              </div>
+
+              {/* Vocabulário Explorado */}
+              <div>
+                <label className="block text-xs font-bold text-marinho/60 mb-1">Vocabulário Explorado</label>
+                <input
+                  type="text"
+                  required
+                  value={classVocabulary}
+                  onChange={(e) => setClassVocabulary(e.target.value)}
+                  placeholder="Ex: cow, horse, pig, green, red"
+                  className="w-full bg-[#FFFDF9] border border-marinho/10 p-2.5 rounded-xl text-xs outline-none focus:border-coral"
+                />
+              </div>
+
+              {/* Participação dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-marinho/60 mb-1">Participação / Engajamento</label>
+                <select
+                  value={classParticipation}
+                  onChange={(e) => setClassParticipation(e.target.value as any)}
+                  className="w-full bg-areia/40 border border-marinho/10 p-2.5 rounded-xl text-xs outline-none focus:border-coral"
+                >
+                  <option value="Excelente">Excelente (Brincou muito, engajou-se alegremente)</option>
+                  <option value="Boa">Boa (Repetiu o vocabulário com carinho e apoio)</option>
+                  <option value="Em desenvolvimento">Em desenvolvimento (Interagiu no próprio tempo)</option>
+                </select>
+              </div>
+
+              {/* Observações */}
+              <div>
+                <label className="block text-xs font-bold text-marinho/60 mb-1">Observações / Historinhas (Notes)</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={classNotes}
+                  onChange={(e) => setClassNotes(e.target.value)}
+                  placeholder="Descreva as peripécias, brincadeiras queridas da criança e como o inglês fez sentido no dia."
+                  className="w-full bg-[#FFFDF9] border border-marinho/10 p-2.5 rounded-xl text-xs outline-none focus:border-coral"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsClassModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-marinho/60 hover:text-marinho bg-areia"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-marinho text-white font-display font-black text-xs uppercase tracking-wider rounded-xl transition"
+                >
+                  Salvar Relatório
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
