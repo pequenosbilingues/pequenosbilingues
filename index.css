@@ -1,0 +1,414 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { Student, ClassSession, MonthlyPayment, FinancialRecord } from '../types';
+import { 
+  Users, Calendar, DollarSign, AlertCircle, Clock, 
+  ChevronRight, ArrowUpRight, Award, Plus, Sparkles
+} from 'lucide-react';
+
+interface DashboardProps {
+  students: Student[];
+  classes: ClassSession[];
+  payments: MonthlyPayment[];
+  financials: FinancialRecord[];
+  onNavigateSection: (section: string) => void;
+  onSelectStudent: (student: Student) => void;
+  onOpenQuickClassAdd: () => void;
+  onOpenQuickStudentAdd: () => void;
+}
+
+export default function Dashboard({ 
+  students, 
+  classes, 
+  payments, 
+  financials, 
+  onNavigateSection,
+  onSelectStudent,
+  onOpenQuickClassAdd,
+  onOpenQuickStudentAdd
+}: DashboardProps) {
+  
+  // Calculate statistics
+  const activeStudents = students.filter(s => s.status === 'Ativo');
+  const inactiveStudents = students.filter(s => s.status !== 'Ativo');
+  
+  // June 2026 Monthly Income & Expenses (since the mock date is June 2026)
+  const currentMonthYear = '2026-06';
+  
+  const monthlyIncomes = financials
+    .filter(f => f.type === 'Receita' && f.date.startsWith(currentMonthYear))
+    .reduce((sum, f) => sum + f.amount, 0);
+
+  const pendingPaymentsAmount = payments
+    .filter(p => p.status !== 'Pago')
+    .reduce((sum, p) => sum + p.amount, 0);
+    
+  const pendingPaymentsCount = payments.filter(p => p.status !== 'Pago').length;
+
+  // Next Upcoming Class sessions
+  // sort by date & time ascending
+  const upcomingClasses = classes
+    .filter(c => c.status === 'Agendada' || c.status === 'Reposição')
+    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
+    .slice(0, 4);
+
+  // Unpaid payments list
+  const unpaidPaymentsList = payments
+    .filter(p => p.status === 'Atrasado' || p.status === 'Pendente')
+    .slice(0, 3);
+
+  // Helper to format currency
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  };
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      
+      {/* Header Row */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="font-display font-black text-3xl text-marinho">Hello, Teacher Carla! 👋</h1>
+          <p className="text-sm text-marinho/60 mt-0.5">Aqui está o acompanhamento lúdico e financeiro do Pequenos Bilíngues.</p>
+        </div>
+        
+        {/* Quick Shortcut Buttons */}
+        <div className="flex flex-wrap gap-3">
+          <button 
+            onClick={onOpenQuickStudentAdd}
+            className="bg-menta hover:bg-menta/90 text-marinho font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+          >
+            <Plus size={14} /> Novo Aluno
+          </button>
+          <button 
+            onClick={onOpenQuickClassAdd}
+            className="bg-coral text-white hover:bg-coral/95 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+          >
+            <Calendar size={14} /> Agendar Aula
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards Bento-Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        {/* Active Students Card */}
+        <div 
+          onClick={() => onNavigateSection('alunos')}
+          className="bg-[#A8D5C2] text-marinho p-6 rounded-[2rem] shadow-xs transform -rotate-1 hover:rotate-0 hover:scale-102 transition-all duration-300 cursor-pointer relative overflow-hidden group"
+        >
+          <div className="absolute top-4 right-4 text-marinho/15 group-hover:scale-110 transition-transform">
+            <Users size={32} />
+          </div>
+          <span className="block text-xs font-bold text-marinho/60 uppercase tracking-wider">Alunos Ativos</span>
+          <span className="block text-4xl font-display font-black mt-2">{activeStudents.length}</span>
+          <div className="flex items-center gap-1 text-[11px] text-marinho/60 mt-3 pt-3 border-t border-marinho/10">
+            <span>{inactiveStudents.length} em pausa ou encerrados</span>
+            <ArrowUpRight size={12} className="text-marinho/60" />
+          </div>
+        </div>
+
+        {/* Revenue Card */}
+        <div 
+          onClick={() => onNavigateSection('financeiro')}
+          className="bg-[#9CC6E8] text-marinho p-6 rounded-[2rem] shadow-xs transform rotate-1 hover:rotate-0 hover:scale-102 transition-all duration-300 cursor-pointer relative overflow-hidden group"
+        >
+          <div className="absolute top-4 right-4 text-marinho/15 group-hover:scale-110 transition-transform">
+            <DollarSign size={32} />
+          </div>
+          <span className="block text-xs font-bold text-marinho/60 uppercase tracking-wider">Receita (Junho)</span>
+          <span className="block text-4xl font-display font-black mt-2 font-mono">
+            {formatCurrency(monthlyIncomes)}
+          </span>
+          <div className="flex items-center gap-1 text-[11px] text-marinho/60 mt-3 pt-3 border-t border-marinho/10">
+            <span>Recebido no mês atual</span>
+            <ArrowUpRight size={12} className="text-marinho/60" />
+          </div>
+        </div>
+
+        {/* Pending payments Card */}
+        <div 
+          onClick={() => onNavigateSection('financeiro')}
+          className="bg-[#FFD166] text-marinho p-6 rounded-[2rem] shadow-xs transform -rotate-1 hover:rotate-0 hover:scale-102 transition-all duration-300 cursor-pointer relative overflow-hidden group"
+        >
+          <div className="absolute top-4 right-4 text-marinho/15 group-hover:scale-110 transition-transform">
+            <AlertCircle size={32} />
+          </div>
+          <span className="block text-xs font-bold text-marinho/60 uppercase tracking-wider">Pendentes / Atrasados</span>
+          <span className="block text-4xl font-display font-black mt-2 font-mono">
+            {formatCurrency(pendingPaymentsAmount)}
+          </span>
+          <div className="flex items-center gap-1 text-[11px] text-marinho/60 mt-3 pt-3 border-t border-marinho/10">
+            <span>{pendingPaymentsCount} cobranças em aberto</span>
+            <Clock size={12} className="text-marinho/60" />
+          </div>
+        </div>
+
+        {/* Classes Card */}
+        <div 
+          onClick={() => onNavigateSection('agenda')}
+          className="bg-[#FFB6A6] text-marinho p-6 rounded-[2rem] shadow-xs transform rotate-1 hover:rotate-0 hover:scale-102 transition-all duration-300 cursor-pointer relative overflow-hidden group"
+        >
+          <div className="absolute top-4 right-4 text-marinho/15 group-hover:scale-110 transition-transform">
+            <Calendar size={32} />
+          </div>
+          <span className="block text-xs font-bold text-marinho/60 uppercase tracking-wider">Total de Aulas</span>
+          <span className="block text-4xl font-display font-black mt-2">{classes.length}</span>
+          <div className="flex items-center gap-1 text-[11px] text-marinho/60 mt-3 pt-3 border-t border-marinho/10">
+            <span>Aulas e reposições registradas</span>
+            <Sparkles size={11} className="text-marinho/60" />
+          </div>
+        </div>
+
+      </div>
+
+      {/* ADVANCED KPIS ROW (Pediatric CRM / School Standard) */}
+      <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] border border-[#2D3A4A]/5 space-y-6">
+        <div>
+          <h2 className="font-display font-bold text-lg text-marinho flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-coral/20 flex items-center justify-center text-xs">📈</span>
+            Indicadores e Métricas Avançadas (Previsão Lúdica)
+          </h2>
+          <p className="text-xs text-marinho/50 mt-1">Dados ponderados de evolução comercial baseados na base de alunos matriculados.</p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center md:text-left">
+          <div className="p-4 bg-areia/40 rounded-2xl border border-marinho/5">
+            <span className="block text-[10px] uppercase font-bold text-marinho/45">Ticket Médio</span>
+            <span className="block text-lg font-display font-black text-marinho mt-1 font-mono">
+              {formatCurrency(activeStudents.reduce((sum, s) => sum + s.monthlyFee, 0) / (activeStudents.length || 1))}
+            </span>
+            <span className="text-[10px] text-marinho/50">Por aluno matriculado</span>
+          </div>
+
+          <div className="p-4 bg-areia/40 rounded-2xl border border-marinho/5">
+            <span className="block text-[10px] uppercase font-bold text-marinho/45">Taxa Inadimplência</span>
+            <span className="block text-lg font-display font-black text-coral mt-1 font-mono">
+              {Math.round((pendingPaymentsCount / (payments.length || 1)) * 100)}%
+            </span>
+            <span className="text-[10px] text-marinho/50">Cobranças em atraso</span>
+          </div>
+
+          <div className="p-4 bg-areia/40 rounded-2xl border border-marinho/5">
+            <span className="block text-[10px] uppercase font-bold text-marinho/45">Crescimento Mensal</span>
+            <span className="block text-lg font-display font-black text-emerald-600 mt-1">
+              +12.5%
+            </span>
+            <span className="text-[10px] text-[#A8D5C2]-dark font-bold font-mono text-[9px]">SINAL VERDE</span>
+          </div>
+
+          <div className="p-4 bg-areia/40 rounded-2xl border border-marinho/5">
+            <span className="block text-[10px] uppercase font-bold text-marinho/45">Receita Anual Prevista</span>
+            <span className="block text-lg font-display font-black text-marinho mt-1 font-mono">
+              {formatCurrency(activeStudents.reduce((sum, s) => sum + s.monthlyFee, 0) * 12)}
+            </span>
+            <span className="text-[10px] text-marinho/50">Contratos vigentes acumulados</span>
+          </div>
+        </div>
+
+        {/* CASHFLOW FORECAST SUBPANEL (PREVISÃO DE CAIXA) */}
+        <div className="p-6 bg-marinho text-white rounded-[2rem] border border-white/5 space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <div>
+              <span className="text-[9px] uppercase font-bold text-[#A8D5C2] tracking-widest font-mono">PROJEÇÃO PATRIMONIAL</span>
+              <h3 className="font-display font-bold text-lg text-white mt-1">Previsão e Simulação de Caixa (Próximos 3 Meses)</h3>
+            </div>
+            <div className="bg-[#A8D5C2]/15 border border-[#A8D5C2]/30 p-2 py-1.5 rounded-xl text-center text-xs shrink-0 text-[#A8D5C2]">
+              <span className="font-bold">Saldo corrente: {formatCurrency(monthlyIncomes)}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
+            
+            {/* Julho 2026 */}
+            <div className="p-4 bg-white/5 rounded-2xl space-y-1 text-center">
+              <span className="block text-[10px] text-white/50 font-bold uppercase">Julho / 2026</span>
+              <p className="text-xl font-display font-black text-[#A8D5C2] font-mono">
+                {formatCurrency(activeStudents.reduce((sum, s) => sum + s.monthlyFee, 0))}
+              </p>
+              <div className="text-[9px] text-white/40 font-semibold pt-1 border-t border-white/5">Destaque: {activeStudents.length} alunos regulares</div>
+            </div>
+
+            {/* Agosto 2026 */}
+            <div className="p-4 bg-white/5 rounded-2xl space-y-1 text-center">
+              <span className="block text-[10px] text-white/50 font-bold uppercase">Agosto / 2026</span>
+              <p className="text-xl font-display font-black text-[#A8D5C2] font-mono">
+                {formatCurrency(activeStudents.reduce((sum, s) => sum + s.monthlyFee, 0))}
+              </p>
+              <div className="text-[9px] text-white/40 font-semibold pt-1 border-t border-white/5">+1 lead convertido estimado</div>
+            </div>
+
+            {/* Setembro 2026 */}
+            <div className="p-4 bg-white/5 rounded-2xl space-y-1 text-center font-normal">
+              <span className="block text-[10px] text-white/50 font-bold uppercase font-sans">Setembro / 2026</span>
+              <p className="text-xl font-display font-black text-[#A8D5C2] font-mono">
+                {formatCurrency(activeStudents.reduce((sum, s) => sum + s.monthlyFee, 0) + 450)}
+              </p>
+              <div className="text-[9px] text-white/40 font-semibold pt-1 border-t border-white/5">Previsão acumulada positiva</div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+
+      {/* Main content Split */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* Next Scheduled Classes */}
+        <div className="bg-white/60 backdrop-blur-sm rounded-[2.5rem] p-8 border-2 border-dashed border-[#2D3A4A]/15 flex flex-col justify-between shadow-xs">
+          <div>
+            <div className="flex justify-between items-center mb-6 pl-1">
+              <h2 className="font-display font-bold text-lg text-marinho flex items-center gap-2">
+                <span className="w-8 h-8 bg-[#CDB4DB] rounded-full flex items-center justify-center text-sm italic text-marinho font-semibold">C</span>
+                Próximas Aulas
+              </h2>
+              <button 
+                onClick={() => onNavigateSection('agenda')}
+                className="text-xs font-bold text-coral hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                Ver Agenda completa <ChevronRight size={12} />
+              </button>
+            </div>
+
+            {upcomingClasses.length === 0 ? (
+              <div className="p-8 text-center text-marinho/50 space-y-2">
+                <p className="text-sm">Nenhuma aula pendente na agenda! 🌈</p>
+                <button 
+                  onClick={onOpenQuickClassAdd}
+                  className="text-xs bg-areia text-marinho px-3 py-1.5 rounded-full hover:bg-areia-dark font-semibold mt-2"
+                >
+                  Agendar Aula
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {upcomingClasses.map((item, idx) => {
+                  const student = students.find(s => s.id === item.studentId);
+                  const colors = ['#A8D5C2', '#9CC6E8', '#FFD166', '#FFB6A6', '#CDB4DB'];
+                  const bulletColor = colors[idx % colors.length];
+                  
+                  return (
+                    <div 
+                      key={item.id} 
+                      onClick={() => student && onSelectStudent(student)}
+                      className="flex items-center justify-between p-5 bg-white rounded-3xl border border-[#2D3A4A]/5 hover:shadow-md hover:scale-[1.01] transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <span className="text-marinho/40 font-bold w-16 text-sm shrink-0">
+                          {item.time}
+                        </span>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-marinho group-hover:text-coral transition-colors truncate">{item.studentName}</p>
+                          <p className="text-xs text-marinho/60 font-medium truncate">
+                            {student?.modality || 'Presencial'} • {item.status === 'Reposição' ? 'Reposição' : 'Regular'} • "{item.theme || 'Não definido'}"
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: bulletColor }}></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 p-4 bg-menta/15 rounded-2xl flex items-center justify-between gap-3 text-xs text-marinho">
+            <span className="font-semibold shrink-0">⚠️ Dica Pedagógica:</span>
+            <span>Aulas lúdicas fluem melhor quando introduzidas por fantoches antes dos cartões. 🧸</span>
+          </div>
+        </div>
+
+        {/* Due / Unpaid Payments tracking */}
+        <div className="bg-[#2D3A4A] text-white rounded-[2.5rem] p-8 flex flex-col justify-between shadow-xs">
+          <div>
+            <div className="flex justify-between items-center mb-6 pl-1">
+              <h2 className="font-display font-medium text-lg text-white flex items-center gap-2">
+                <span className="w-8 h-8 bg-[#FFB6A6] text-marinho rounded-full flex items-center justify-center text-sm italic font-semibold">$</span>
+                Lembretes Financeiros
+              </h2>
+              <button 
+                onClick={() => onNavigateSection('financeiro')}
+                className="text-xs font-bold text-[#FFB6A6] hover:text-white transition inline-flex items-center gap-1 cursor-pointer"
+              >
+                Painel Financeiro <ChevronRight size={12} />
+              </button>
+            </div>
+
+            {unpaidPaymentsList.length === 0 ? (
+              <div className="p-8 text-center text-white/50 space-y-2">
+                <p className="text-sm">Excelente! Todas as mensalidades estão pagas no momento. 🎉</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {unpaidPaymentsList.map((pay) => {
+                  const student = students.find(s => s.id === pay.studentId);
+                  const daysLate = Math.floor((new Date('2026-06-08').getTime() - new Date(pay.dueDate).getTime()) / (1000 * 3600 * 24));
+                  
+                  return (
+                    <div 
+                      key={pay.id} 
+                      className="flex items-center justify-between p-4 bg-white/10 hover:bg-white/15 rounded-2xl border border-white/10 transition-colors"
+                    >
+                      <div className="space-y-1 pr-2 min-w-0">
+                        <p className="font-bold text-white truncate">{pay.studentName}</p>
+                        <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase">
+                          <span className="text-white/80 bg-white/10 px-2 py-0.5 rounded-full">
+                            Vecto: {pay.dueDate.split('-')[2]}/{pay.dueDate.split('-')[1]}
+                          </span>
+                          {pay.status === 'Atrasado' ? (
+                            <span className="text-[#FFB6A6] bg-[#FFB6A6]/20 px-2 py-0.5 rounded-full">
+                              Atrasado ({daysLate}d)
+                            </span>
+                          ) : (
+                            <span className="text-[#FFD166] bg-[#FFD166]/20 px-2 py-0.5 rounded-full">
+                              Pendente
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-right space-y-2 shrink-0">
+                        <p className="font-display font-bold text-white/90 font-mono">{formatCurrency(pay.amount)}</p>
+                        {student && (
+                          <a 
+                            href={`https://wa.me/${student.whatsapp}?text=Ol%C3%A1%20${encodeURIComponent(student.parentName)}%2C%20tudo%20bem%3F%20Passando%20para%20enviar%20o%20lembrete%20da%20mensalidade%20de%20ingl%C3%AAs%20do(a)%20${encodeURIComponent(student.name)}.%20Qualquer%20d%C3%BAvida%20estou%20%C3%A0%20disposi%C3%A7%C3%A3o!%20%E2%9D%A4%EF%B8%8F`}
+                            target="_blank" 
+                            rel="referrer"
+                            className="bg-[#FFB6A6] text-[#2D3A4A] hover:bg-[#FFD166] text-center p-2 px-3 rounded-lg text-[10px] font-black uppercase transition duration-200 block shadow-sm active:scale-95"
+                          >
+                            COBRAR 💬
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-white/10">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-white/50 block mb-2">Meta de Arrecadação Mensal</span>
+            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden flex">
+              <div 
+                style={{ width: `${100 - Math.min(100, Math.round((unpaidPaymentsList.length / (payments.length || 1)) * 100))}%` }} 
+                className="bg-[#A8D5C2] h-full transition-all duration-500"
+              />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  );
+}

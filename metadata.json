@@ -1,0 +1,613 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { Student } from '../types';
+import { 
+  Users, Plus, Search, Eye, Edit2, Trash2, 
+  Filter, Check, X, Phone, MessageSquare, Mail, MapPin, Calendar, HelpCircle
+} from 'lucide-react';
+
+interface StudentManagerProps {
+  students: Student[];
+  onAddStudent: (student: Omit<Student, 'id'>) => void;
+  onEditStudent: (student: Student) => void;
+  onDeleteStudent: (id: string) => void;
+  onSelectStudent: (student: Student) => void;
+  isOpenQuickAdd: boolean;
+  onCloseQuickAdd: () => void;
+}
+
+export default function StudentManager({
+  students,
+  onAddStudent,
+  onEditStudent,
+  onDeleteStudent,
+  onSelectStudent,
+  isOpenQuickAdd,
+  onCloseQuickAdd
+}: StudentManagerProps) {
+  
+  // State for search and filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'Todos' | 'Ativo' | 'Pausado' | 'Encerrado'>('Todos');
+  const [modalityFilter, setModalityFilter] = useState<'Todos' | 'Individual' | 'Dupla' | 'Pequeno Grupo'>('Todos');
+
+  // Modal Student state (Create / Edit)
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    birthDate: '',
+    parentName: '',
+    phone: '',
+    whatsapp: '',
+    email: '',
+    address: '',
+    modality: 'Individual' as const,
+    frequency: 1,
+    monthlyFee: 320,
+    enrollmentDate: new Date('2026-06-08').toISOString().split('T')[0],
+    observations: '',
+    status: 'Ativo' as const
+  });
+
+  // Open modal for new student
+  const handleOpenCreateModal = () => {
+    setEditingStudent(null);
+    setFormData({
+      name: '',
+      birthDate: '',
+      parentName: '',
+      phone: '',
+      whatsapp: '',
+      email: '',
+      address: '',
+      modality: 'Individual',
+      frequency: 1,
+      monthlyFee: 320,
+      enrollmentDate: new Date('2026-06-08').toISOString().split('T')[0],
+      observations: '',
+      status: 'Ativo'
+    });
+    setIsFormModalOpen(true);
+  };
+
+  // Open modal for editing student
+  const handleOpenEditModal = (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation(); // Avoid triggering details navigation
+    setEditingStudent(student);
+    setFormData({
+      name: student.name,
+      birthDate: student.birthDate,
+      parentName: student.parentName,
+      phone: student.phone,
+      whatsapp: student.whatsapp,
+      email: student.email,
+      address: student.address,
+      modality: student.modality,
+      frequency: student.frequency,
+      monthlyFee: student.monthlyFee,
+      enrollmentDate: student.enrollmentDate,
+      observations: student.observations,
+      status: student.status
+    });
+    setIsFormModalOpen(true);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'monthlyFee' || name === 'frequency' ? Number(value) : value
+    }));
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.parentName) return;
+
+    if (editingStudent) {
+      onEditStudent({
+        ...editingStudent,
+        ...formData
+      });
+    } else {
+      onAddStudent(formData);
+    }
+    
+    setIsFormModalOpen(false);
+    onCloseQuickAdd();
+  };
+
+  const handleDeleteClick = (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Tem certeza que deseja excluir o(a) aluno(a) "${name}"? Todas as aulas e faturamento vinculados serão ajustados.`)) {
+      onDeleteStudent(id);
+    }
+  };
+
+  // Reactively calculate age based on year 2026 representation
+  const calculateAge = (birthDateStr: string) => {
+    if (!birthDateStr) return 'N/A';
+    const birthDate = new Date(birthDateStr);
+    const currentDate = new Date('2026-06-08');
+    let age = currentDate.getFullYear() - birthDate.getFullYear();
+    const m = currentDate.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && currentDate.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age <= 0 ? 'Menos de 1 ano' : `${age} anos`;
+  };
+
+  // Safe checks for opening quick add triggers from Dashboard shortcuts
+  React.useEffect(() => {
+    if (isOpenQuickAdd) {
+      handleOpenCreateModal();
+    }
+  }, [isOpenQuickAdd]);
+
+  // Filter students array
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = 
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.parentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'Todos' || student.status === statusFilter;
+    const matchesModality = modalityFilter === 'Todos' || student.modality === modalityFilter;
+
+    return matchesSearch && matchesStatus && matchesModality;
+  });
+
+  return (
+    <div className="space-y-8 animate-fade-in text-marinho">
+      
+      {/* Top action row */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="font-display font-black text-3xl text-marinho flex items-center gap-2">
+            <Users className="text-menta" /> Fichas Pedagógicas e Cadastros
+          </h1>
+          <p className="text-sm text-marinho/60 mt-0.5">Gerenciamento completo de informações, relatórios e cobranças por aluno.</p>
+        </div>
+
+        <button 
+          onClick={handleOpenCreateModal}
+          className="bg-menta hover:bg-menta/95 text-marinho font-bold px-6 py-3 rounded-full flex items-center gap-2 shadow-sm focus:scale-98 transition-all cursor-pointer"
+        >
+          <Plus size={18} /> Matricular Pequeno
+        </button>
+      </div>
+
+      {/* Search and Filters Segment */}
+      <div className="bg-white p-5 rounded-scrapbook shadow-xs border-2 border-areia-dark/5 space-y-4">
+        
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-marinho/40" size={18} />
+          <input 
+            type="text" 
+            placeholder="Buscar por nome do aluno, responsável ou e-mail..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-areia/40 pl-11 pr-4 py-3 rounded-xl border border-marinho/10 focus:border-coral outline-none text-sm font-medium"
+          />
+        </div>
+
+        {/* Categories toggles with style scrapbook */}
+        <div className="flex flex-wrap items-center gap-6 text-xs font-bold pt-1">
+          
+          {/* Status Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-marinho/50 uppercase">Status:</span>
+            <div className="flex gap-1.5 bg-areia/50 p-1 rounded-lg">
+              {['Todos', 'Ativo', 'Pausado', 'Encerrado'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status as any)}
+                  className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                    statusFilter === status 
+                      ? 'bg-white text-marinho shadow-xs font-bold' 
+                      : 'text-marinho/60 hover:text-marinho'
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Modality Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-marinho/50 uppercase">Modalidade:</span>
+            <div className="flex gap-1.5 bg-areia/50 p-1 rounded-lg">
+              {['Todos', 'Individual', 'Dupla', 'Pequeno Grupo'].map((modality) => (
+                <button
+                  key={modality}
+                  onClick={() => setModalityFilter(modality as any)}
+                  className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                    modalityFilter === modality 
+                      ? 'bg-white text-marinho shadow-xs font-bold' 
+                      : 'text-marinho/60 hover:text-marinho'
+                  }`}
+                >
+                  {modality}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Students Data Grid / Table */}
+      {filteredStudents.length === 0 ? (
+        <div className="bg-white p-12 rounded-scrapbook shadow-xs text-center border-2 border-dashed border-marinho/10 space-y-4">
+          <p className="text-marinho/60 text-base font-semibold">Nenhum aluno encontrado correspondente aos filtros.</p>
+          <button 
+            onClick={handleOpenCreateModal}
+            className="bg-areia text-marinho font-bold px-4 py-2 rounded-xl text-xs hover:bg-[#ece5da]"
+          >
+            Cadastrar Novo Aluno
+          </button>
+        </div>
+      ) : (
+        <div className="bg-white rounded-scrapbook shadow-sm overflow-hidden border-2 border-areia">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-[#ebd9cc]/30 text-marinho/70 text-xs font-bold tracking-wider upper-caps border-b border-areia-dark/10">
+                <tr>
+                  <th className="px-6 py-4">Pequeno(a) Aluno(a)</th>
+                  <th className="px-6 py-4">Responsável & Contato</th>
+                  <th className="px-6 py-4">Modalidade & Freq</th>
+                  <th className="px-6 py-4">Mensalidade</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-areia">
+                {filteredStudents.map((child) => {
+                  
+                  return (
+                    <tr 
+                      key={child.id} 
+                      onClick={() => onSelectStudent(child)}
+                      className="hover:bg-areia/25 transition cursor-pointer group"
+                    >
+                      {/* Name/Avatar & Age */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-marinho shadow-xs ${
+                            child.status === 'Ativo' ? 'bg-menta' : 'bg-areia-dark text-marinho/50'
+                          }`}>
+                            {child.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-marinho group-hover:text-coral transition-colors">{child.name}</p>
+                            <span className="text-xs text-marinho/50 font-semibold block mt-0.5">
+                              🎂 {calculateAge(child.birthDate)} ({child.birthDate.split('-')[2]}/{child.birthDate.split('-')[1]})
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Parent and Direct contacts */}
+                      <td className="px-6 py-4">
+                        <div className="text-xs space-y-0.5 text-marinho/80">
+                          <p className="font-semibold text-sm text-marinho">{child.parentName}</p>
+                          <p className="flex items-center gap-1"><Phone size={11} className="text-marinho/40" /> {child.phone}</p>
+                        </div>
+                      </td>
+
+                      {/* Modality & Freq */}
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            child.modality === 'Individual' ? 'bg-coral/20 text-marinho' : 
+                            child.modality === 'Dupla' ? 'bg-lilas/25 text-marinho' : 'bg-azulCeu/20 text-marinho'
+                          }`}>
+                            {child.modality}
+                          </span>
+                          <p className="text-[10px] text-marinho/60 font-medium font-semibold">{child.frequency} aula(s) p/ semana</p>
+                        </div>
+                      </td>
+
+                      {/* Monthly Fee */}
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-sm text-marinho font-mono">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(child.monthlyFee)}
+                        </span>
+                      </td>
+
+                      {/* Status pill */}
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                          child.status === 'Ativo' ? 'bg-emerald-100 text-emerald-800' :
+                          child.status === 'Pausado' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            child.status === 'Ativo' ? 'bg-emerald-600' :
+                            child.status === 'Pausado' ? 'bg-amber-500' : 'bg-gray-400'
+                          }`} />
+                          {child.status}
+                        </span>
+                      </td>
+
+                      {/* Interactive Actions row */}
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => onSelectStudent(child)}
+                            title="Ver Ficha Acadêmica"
+                            className="p-1.5 bg-areia text-marinho/70 hover:text-marinho rounded-lg hover:bg-areia-dark"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button 
+                            onClick={(e) => handleOpenEditModal(child, e)}
+                            title="Editar Dados"
+                            className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button 
+                            onClick={(e) => handleDeleteClick(child.id, child.name, e)}
+                            title="Excluir Aluno"
+                            className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT / CREATE STUDENT MODEL FORM */}
+      {isFormModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-scrapbook shadow-2xl border-4 border-dashed border-menta max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
+            
+            <button 
+              onClick={() => {
+                setIsFormModalOpen(false);
+                onCloseQuickAdd();
+              }}
+              className="absolute top-4 right-4 text-marinho/60 hover:text-marinho font-bold text-xl px-2 hover:bg-areia rounded-full cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="text-center space-y-1 mb-6">
+              <h3 className="font-display font-black text-2xl text-marinho">
+                {editingStudent ? '✏️ Atualizar Ficha do Aluno' : '✨ Matrícula de Pequeno Aluno'}
+              </h3>
+              <p className="text-xs text-marinho/60">Formulário de cadastro detalhado de inglês lúdico premium</p>
+            </div>
+
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+              
+              {/* Seção 1: Dados do Aluno */}
+              <div className="bg-[#ebd9cc]/20 p-4 rounded-2xl space-y-3">
+                <span className="text-xs font-bold text-coral uppercase tracking-wide">1. Dados da Criança</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">Nome Completo</label>
+                    <input 
+                      type="text" 
+                      name="name"
+                      required
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Arthur Silva"
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">Data de Nascimento</label>
+                    <input 
+                      type="date" 
+                      name="birthDate"
+                      required
+                      value={formData.birthDate}
+                      onChange={handleInputChange}
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Seção 2: Responsável e Endereço */}
+              <div className="bg-[#9CC6E8]/10 p-4 rounded-2xl space-y-3">
+                <span className="text-xs font-bold text-[#9CC6E8]-dark uppercase tracking-wide">2. Responsável e Contatos</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">Nome do Responsável</label>
+                    <input 
+                      type="text" 
+                      name="parentName"
+                      required
+                      value={formData.parentName}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Mariana Silva"
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">E-mail</label>
+                    <input 
+                      type="email" 
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="mariana@email.com"
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">Número de Telefone</label>
+                    <input 
+                      type="tel" 
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="(69) 99251-2267"
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">WhatsApp (Envio automático)</label>
+                    <input 
+                      type="tel" 
+                      name="whatsapp"
+                      required
+                      value={formData.whatsapp}
+                      onChange={handleInputChange}
+                      placeholder="11987654321 (Dígitos apenas)"
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-marinho/60 mb-1">Endereço Residencial</label>
+                  <input 
+                    type="text" 
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    placeholder="Av. Paulista, 1000 - São Paulo, SP"
+                    className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                  />
+                </div>
+              </div>
+
+              {/* Seção 3: Plano e Observações */}
+              <div className="bg-lilas/10 p-4 rounded-2xl space-y-3">
+                <span className="text-xs font-bold text-[#B5A1C9] uppercase tracking-wide">3. Detalhes do Curso e Cobrança</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">Modalidade</label>
+                    <select
+                      name="modality"
+                      value={formData.modality}
+                      onChange={handleInputChange}
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-xs outline-none focus:border-menta"
+                    >
+                      <option value="Individual">Individual</option>
+                      <option value="Dupla">Dupla</option>
+                      <option value="Pequeno Grupo">Pequeno Grupo</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">Aulas Semanalmente</label>
+                    <input 
+                      type="number" 
+                      name="frequency"
+                      required
+                      value={formData.frequency}
+                      onChange={handleInputChange}
+                      min="1"
+                      max="10"
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">Valor da Mensalidade (R$)</label>
+                    <input 
+                      type="number" 
+                      name="monthlyFee"
+                      required
+                      value={formData.monthlyFee}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">Data de Matrícula</label>
+                    <input 
+                      type="date" 
+                      name="enrollmentDate"
+                      value={formData.enrollmentDate}
+                      onChange={handleInputChange}
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-marinho/60 mb-1">Status Acadêmico</label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-xs outline-none focus:border-menta"
+                    >
+                      <option value="Ativo">Ativo</option>
+                      <option value="Pausado">Pausado</option>
+                      <option value="Encerrado">Encerrado</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-marinho/60 mb-1">Observações Iniciais / Interesse Lúdicos</label>
+                  <textarea 
+                    name="observations"
+                    value={formData.observations}
+                    onChange={handleInputChange}
+                    placeholder="Ex: Responde fantoches, adora blocos e dinossauros. Irmã tem ciúmes..."
+                    className="w-full bg-white border border-marinho/10 p-2 rounded-xl text-sm outline-none focus:border-menta h-20 resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Botões do Formulário */}
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setIsFormModalOpen(false);
+                    onCloseQuickAdd();
+                  }}
+                  className="w-1/2 border border-marinho/10 text-marinho font-bold py-3 rounded-xl hover:bg-areia transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="w-1/2 bg-marinho text-white font-bold py-3 rounded-xl hover:bg-marinho/90 transition-all cursor-pointer"
+                >
+                  {editingStudent ? 'Salvar Alterações' : 'Matricular Pequeno'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
